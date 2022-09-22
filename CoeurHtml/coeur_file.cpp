@@ -1,6 +1,7 @@
 #include "coeur.h"
 
 #include "coeur_file.h"
+#include "coeur_common.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -8,9 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 
-static char _last_error[512];
-
-CoeurFile coeur_open(const char* filename, coeur_open_flags_t flags) {
+CoeurFile coeur_open(const char* filename, coeur_file_flags_t flags) {
 	struct coeur_file_v1* file = (struct coeur_file_v1*) malloc(sizeof(coeur_file_v1));
 	assert(file);
 	memset(file, 0, sizeof(coeur_file_v1));
@@ -24,7 +23,7 @@ CoeurFile coeur_open(const char* filename, coeur_open_flags_t flags) {
 	FILE* fp = NULL;
 	errno_t err = fopen_s(&fp, file->filename, "r");
 	if (!fp || err) {
-		strerror_s(_last_error, 512, err);
+		strerror_s(getLastErrorBuffer(), 512, err);
 		file_close_v1(file);
 		return NULL;
 	}
@@ -39,7 +38,8 @@ void coeur_close(CoeurFile file) {
 }
 
 const char* coeur_get_file_contents(CoeurFile file) {
-	return file->buffer;
+	if (file->buffer) return file->buffer->content;
+	return NULL;
 }
 
 // PRIVATE METHODS
@@ -48,29 +48,33 @@ void file_close_v1(coeur_file_v1* file) {
 	if (file) {
 		if (file->filename) free(file->filename);
 		if (file->fp) fclose((FILE*)file->fp);
-		if (file->buffer) free(file->buffer);
+		if (file->buffer) buffer_free(file->buffer);
 
 		free(file);
 	}
 }
 
 int file_buffer_file_v1(coeur_file_v1* file) {
-	assert(file && file->fp);
+	assert(file && file->fp && !file->buffer);
+
+	ZeroAlloc(coeur_buffer_v1, buffer);
 	
 	FILE* fp = (FILE*)file->fp;
 	fseek(fp, 0, SEEK_END);
-	file->filelen = ftell(fp);
+	buffer->contentLen = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	file->buffer = (char*)malloc(file->filelen);
-	assert(file->buffer);
-	memset(file->buffer, 0, file->filelen);
+	buffer->content = (char*)malloc(buffer->contentLen);
+	assert(buffer->content);
+	memset(buffer->content, 0, buffer->contentLen);
 
-	fread_s(file->buffer, file->filelen, 1, file->filelen, fp);
+	fread_s(buffer->content, buffer->contentLen, 1, buffer->contentLen, fp);
 	if (errno) {
-		strerror_s(_last_error, 512, errno);
+		strerror_s(getLastErrorBuffer(), 512, errno);
 		return 0;
 	}
+
+	file->buffer = buffer;
 
 	return 1;
 }

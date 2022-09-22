@@ -155,13 +155,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="coeur_common.h" />
     <ClInclude Include="coeur_node.h" />
+    <ClInclude Include="coeur_url.h" />
     <ClInclude Include="include\coeur.h" />
     <ClInclude Include="coeur_file.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="coeur_common.cpp" />
     <ClCompile Include="coeur_file.cpp" />
     <ClCompile Include="coeur_node.cpp" />
+    <ClCompile Include="coeur_url.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

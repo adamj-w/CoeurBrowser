@@ -24,12 +24,24 @@
     <ClInclude Include="coeur_node.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="coeur_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="coeur_url.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="coeur_file.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="coeur_node.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="coeur_common.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="coeur_url.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

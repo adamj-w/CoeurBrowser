@@ -1,6 +1,7 @@
 #pragma once
 
 #include "coeur.h"
+#include "coeur_common.h"
 
 #define COEUR_NODE_HTML (0)
 #define COEUR_NODE_HEAD (1)
@@ -27,15 +28,21 @@ struct coeur_node_prop_v1 {
 	size_t propValLen;
 };
 
+#define NODE_TOKEN_RAW (1)
+#define NODE_TOKEN_TAG_START (2)
+#define NODE_TOKEN_TAG_END (3)
+#define NODE_TOKEN_TAG_PROP (4)
+#define NODE_TOKEN_STRING (5)
+#define NODE_TOKEN_UNKNOWN (6)
+
 // Intermediary
 struct node_token_v1 {
 	coeur_token_type_t type;
 	
-	bool closingTag, openingTag;
-	bool selfClosing;
+	const char* content;
+	size_t contentLen;
 
-	const char* name;
-	size_t nameLen;
+	bool closer;
 
 	node_token_v1* next;
 	node_token_v1 *prev;
@@ -67,6 +74,7 @@ struct coeur_node_v1 {
 coeur_node_v1* node_create_v1(void);
 coeur_node_v1* node_destroy_v1(coeur_node_v1* node);
 
-char* tokenize_next_in_buffer(node_token_v1* prev, coeur_file_v1* file);
+node_token_v1* tokenize_file_buffer(coeur_buffer_v1* buffer);
+void free_token_list(node_token_v1* head);
 
 coeur_node_type_t parse_node_type_v1(const char* typeName);
