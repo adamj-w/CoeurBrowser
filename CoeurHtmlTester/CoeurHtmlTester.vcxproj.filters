@@ -18,6 +18,9 @@
     <ClCompile Include="CoeurHtmlTester.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WinsockTets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="test.html" />

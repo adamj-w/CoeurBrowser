@@ -71,10 +71,13 @@ struct coeur_node_v1 {
 	coeur_node_v1* firstChild = NULL;
 };
 
+coeur_node_v1* node_parse_from_buffer(coeur_buffer_v1* buffer);
+
 coeur_node_v1* node_create_v1(void);
 coeur_node_v1* node_destroy_v1(coeur_node_v1* node);
+coeur_node_v1* node_construct_tree(node_token_v1* head);
 
 node_token_v1* tokenize_file_buffer(coeur_buffer_v1* buffer);
-void free_token_list(node_token_v1* head);
+void token_list_free(node_token_v1* head);
 
-coeur_node_type_t parse_node_type_v1(const char* typeName);
+coeur_node_type_t node_parse_type(const char* typeName, size_t* oTagLen);

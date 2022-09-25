@@ -27,7 +27,13 @@
     <ClInclude Include="coeur_common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="coeur_url.h">
+    <ClInclude Include="networking\coeur_url.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="networking\network_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="networking\http.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -41,7 +47,13 @@
     <ClCompile Include="coeur_common.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="coeur_url.cpp">
+    <ClCompile Include="networking\coeur_url.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="networking\network_common.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="networking\http.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

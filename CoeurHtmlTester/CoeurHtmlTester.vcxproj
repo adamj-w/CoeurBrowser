@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CoeurHtmlTester.cpp" />
+    <ClCompile Include="WinsockTets.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CoeurHtml\CoeurHtml.vcxproj">

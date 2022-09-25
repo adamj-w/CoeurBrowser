@@ -2,6 +2,7 @@
 
 #include "coeur_file.h"
 #include "coeur_common.h"
+#include "coeur_node.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +10,7 @@
 #include <assert.h>
 #include <errno.h>
 
-CoeurFile coeur_open(const char* filename, coeur_file_flags_t flags) {
+CoeurObject coeur_open(const char* filename, coeur_file_flags_t flags) {
 	struct coeur_file_v1* file = (struct coeur_file_v1*) malloc(sizeof(coeur_file_v1));
 	assert(file);
 	memset(file, 0, sizeof(coeur_file_v1));
@@ -30,15 +31,40 @@ CoeurFile coeur_open(const char* filename, coeur_file_flags_t flags) {
 	file->fp = fp;
 
 	assert(file_buffer_file_v1(file));
-	return file;
+
+	ZeroAlloc(coeur_object, object);
+	object->revision = COEUR_V1;
+	object->typeId = COEUR_FILE;
+	object->object = (void*)file;
+	return object;
 }
 
-void coeur_close(CoeurFile file) {
-	file_close_v1(file);
+CoeurObject coeur_parse_file(CoeurObject fileObj, coeur_parse_flags_t flags) {
+	if (!fileObj || fileObj->typeId != COEUR_FILE || !OBJ_CAST(coeur_file_v1, fileObj)->buffer) {
+		setLastError("Invalid file passed to method");
+		assert(false);
+		return NULL;
+	}
+
+	coeur_file_v1* file = OBJ_CAST(coeur_file_v1, fileObj);
+
+	coeur_node_v1* node = node_parse_from_buffer(file->buffer);
+	ZeroAlloc(coeur_object, obj);
+	obj->revision = COEUR_V1;
+	obj->typeId = COEUR_NODE;
+	obj->object = node;
+	return obj;
 }
 
-const char* coeur_get_file_contents(CoeurFile file) {
-	if (file->buffer) return file->buffer->content;
+const char* coeur_get_file_contents(CoeurObject file) {
+	if (file) {
+		if (file->typeId != COEUR_FILE || file->revision != COEUR_V1) {
+			setLastError("Invalid Argument");
+			return NULL;
+		}
+
+		if (((coeur_file_v1*)file->object)->buffer) return OBJ_CAST(coeur_file_v1, file)->buffer->content;
+	}
 	return NULL;
 }
 

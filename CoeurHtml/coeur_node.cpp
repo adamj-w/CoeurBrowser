@@ -19,11 +19,15 @@ static const char* nodeTokenNames[NODE_TOKEN_UNKNOWN + 1] = {
 	"unknown"
 };
 
+#define min(_x, _y) ((_x) > (_y) ? (_y) : (_x))
+
 void __debugPrintList(node_token_v1* tokenList) {
 	for (node_token_v1* curr = tokenList; curr != NULL; curr = curr->next) {
 		char tmp[32];
 		tmp[0] = '\0';
-		strncpy_s(tmp, 32, curr->content, curr->contentLen);
+		if (curr->content) {
+			strncpy_s(tmp, 32, curr->content, min(31, curr->contentLen));
+		}
 		if (curr->contentLen >= 31) {
 			tmp[31] = '\0';
 			tmp[30] = tmp[29] = tmp[28] = '.';
@@ -32,27 +36,19 @@ void __debugPrintList(node_token_v1* tokenList) {
 	}
 }
 
-CoeurNode coeur_parse_file(CoeurFile file, coeur_parse_flags_t flags) {
-	assert(file && file->buffer);
+// PRIVATE METHODS
 
+coeur_node_v1* node_parse_from_buffer(coeur_buffer_v1* buffer) {
 	// Tokenize the file
-	node_token_v1* head = tokenize_file_buffer(file->buffer);
+	node_token_v1* head = tokenize_file_buffer(buffer);
 	if (!head) return NULL;
 
 	__debugPrintList(head);
 
-	free_token_list(head);
-
-	CoeurNode node = node_create_v1();
-
+	coeur_node_v1* node = node_construct_tree(head);
+	token_list_free(head);
 	return node;
 }
-
-void coeur_free_node(CoeurNode node) {
-	node_destroy_v1(node);
-}
-
-// PRIVATE METHODS
 
 coeur_node_v1* node_create_v1(void) {
 	coeur_node_v1* node = (coeur_node_v1*)malloc(sizeof(coeur_node_v1));
@@ -86,6 +82,79 @@ coeur_node_v1* node_destroy_v1(coeur_node_v1* node) {
 	}
 
 	return NULL;
+}
+
+#define PEEK_NT(_token) ((_token)->next) && (_token)->next
+
+node_token_v1* _node_parse_property(coeur_node_prop_v1* prop, node_token_v1* token) {
+	assert(token && token->type == NODE_TOKEN_TAG_PROP);
+
+	prop->propName = token->content;
+	prop->propNameLen = token->contentLen;
+
+	if (PEEK_NT(token)->type == NODE_TOKEN_STRING) {
+		token = token->next;
+		prop->propVal = token->content;
+		prop->propValLen = token->contentLen;
+	}
+
+	return token->next;
+}
+
+node_token_v1* _node_construct(coeur_node_v1* prevNode, node_token_v1* currToken) {
+	if (currToken->type != NODE_TOKEN_TAG_START) return _node_construct(prevNode, currToken->next);
+	coeur_node_v1* currNode = node_create_v1();
+
+	prevNode->next = currNode;
+	currNode->prev = prevNode;
+
+	currNode->openTag = currToken->content;
+	currNode->type = node_parse_type(&currToken->content[1], NULL);
+	currNode->openTagLen = currToken->contentLen;
+	currToken = currToken->next;
+	if (!currToken) { 
+		setLastError("Invalid html tag at end");
+		return currToken; 
+	}
+
+	node_token_v1* currProp = currToken;
+	while (currToken->type == NODE_TOKEN_TAG_PROP) {
+		currToken = currToken->next;
+		currNode->propertiesLen++;
+	}
+
+	if (currNode->propertiesLen > 0) {
+		currNode->properties = (coeur_node_prop_v1*)calloc(currNode->propertiesLen, sizeof(coeur_node_prop_v1));
+		assert(currNode->properties);
+		for (size_t i = 0; i < currNode->propertiesLen; ++i) {
+			currProp = _node_parse_property(&currNode->properties[i], currProp);
+		}
+		assert(currProp == currToken);
+	}
+
+	if (currToken->type != NODE_TOKEN_TAG_END) {
+		setLastError("Invalid html tag at end");
+		return currToken;
+	}
+
+	currNode->openTagLen = currToken->content - currNode->openTag;
+	currNode->selfClose
+
+	return currToken;
+}
+
+coeur_node_v1* node_construct_tree(node_token_v1* head) {
+	coeur_node_v1* root = node_create_v1();
+
+	node_token_v1* front = head;
+	/*node_token_v1* back = head;
+	for (back = head; back->next != NULL; back = back->next);*/
+
+	// TODO: try a recursive strategy
+	node_token_v1* out = _node_construct(root, front); // consumes tokens and can call self
+	assert(out == NULL);
+	
+	return root;
 }
 
 node_token_v1* tokenize_file_buffer(coeur_buffer_v1* buffer) {
@@ -171,7 +240,7 @@ node_token_v1* tokenize_file_buffer(coeur_buffer_v1* buffer) {
 						break;
 					} else {
 						setLastError("malformed '/' in html tag");
-						free_token_list(head);
+						token_list_free(head);
 						return NULL;
 					}
 				} else {
@@ -207,14 +276,14 @@ node_token_v1* tokenize_file_buffer(coeur_buffer_v1* buffer) {
 
 	if (inTag || inString || inName) {
 		setLastError("Unclosed html tag or string detected");
-		free_token_list(head);
+		token_list_free(head);
 		return NULL;
 	}
 
 	return head;
 }
 
-void free_token_list(node_token_v1* head) {
+void token_list_free(node_token_v1* head) {
 	while (head != NULL) {
 		node_token_v1* next = head->next;
 		free(head);
@@ -222,13 +291,13 @@ void free_token_list(node_token_v1* head) {
 	}
 }
 
-coeur_node_type_t parse_node_type_v1(const char* typeName, size_t* oTagLen) {
+coeur_node_type_t node_parse_type(const char* typeName, size_t* oTagLen) {
 	size_t len = 0;
 	while (isalnum(typeName[len])) {
 		len++;
 	}
 
-	*oTagLen = len;
+	if(oTagLen) *oTagLen = len;
 
 	if (len == 0) return COEUR_NODE_UNKNOWN;
 

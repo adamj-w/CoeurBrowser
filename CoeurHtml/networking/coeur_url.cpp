@@ -1,14 +1,42 @@
 #include "coeur_url.h"
 
+#include "../coeur_node.h"
+#include "http.h"
+
 #include <assert.h>
 #include <ctype.h>
 
-CoeurUrl coeur_create_url(const char* url, coeur_url_flags_t flags) {
-	return coeur_url_parse(url);
+CoeurObject coeur_create_url(const char* url, coeur_url_flags_t flags) {
+	coeur_url_v1* urlObj = url_parse(url);
+	if (!urlObj) return NULL;
+	ZeroAlloc(coeur_object, obj);
+	obj->revision = COEUR_V1;
+	obj->typeId = COEUR_URL;
+	obj->object = urlObj;
+	return obj;
 }
 
-void coeur_destroy_url(CoeurUrl url) {
-	coeur_url_free(url);
+CoeurObject coeur_parse_from_url(CoeurObject urlObj, coeur_parse_flags_t flags) {
+	if (!urlObj || urlObj->typeId != COEUR_URL) {
+		setLastError("Invalid argument");
+		return NULL;
+	}
+
+	coeur_url_v1* url = OBJ_CAST(coeur_url_v1, urlObj);
+	if (!url->buffer) {
+		url_fetch_contents(url);
+		if (!url->buffer) {
+			return NULL;
+		}
+	}
+
+	coeur_node_v1* node = node_parse_from_buffer(url->buffer);
+	if (!node) return NULL;
+	ZeroAlloc(coeur_object, obj);
+	obj->revision = COEUR_V1;
+	obj->typeId = COEUR_NODE;
+	obj->object = node;
+	return obj;
 }
 
 // PRIVATE METHODS
@@ -16,7 +44,7 @@ void coeur_destroy_url(CoeurUrl url) {
 #define PARSE_DOMAIN (1)
 #define PARSE_PORT (2)
 #define PARSE_PATH (3)
-coeur_url_v1* coeur_url_parse(const char* url) {
+coeur_url_v1* url_parse(const char* url) {
 	size_t len = strnlen_s(url, 512);
 	if (0 == len) {
 		setLastError("no url passed into coeur_create_url");
@@ -33,7 +61,7 @@ coeur_url_v1* coeur_url_parse(const char* url) {
 	char* schemeEnd = strstr(out->fullUrl, "://");
 	if (!schemeEnd) {
 		setLastError("Could not determine the url's scheme (scheme://domain:port/path)");
-		coeur_url_free(out);
+		url_free(out);
 		return NULL;
 	}
 
@@ -48,7 +76,7 @@ coeur_url_v1* coeur_url_parse(const char* url) {
 
 	if (curr == 0) {
 		setLastError("Could not determine the url's domain (scheme://domain:port/path)");
-		coeur_url_free(out);
+		url_free(out);
 		return NULL;
 	}
 	out->domainNameLen = curr;
@@ -59,7 +87,7 @@ coeur_url_v1* coeur_url_parse(const char* url) {
 		if (errno) {
 			errno = 0;
 			setLastError("Could not determine the url's port (scheme://domain:port/path)");
-			coeur_url_free(out);
+			url_free(out);
 			return NULL;
 		}
 	}
@@ -74,12 +102,22 @@ coeur_url_v1* coeur_url_parse(const char* url) {
 	return out;
 }
 
-void coeur_url_free(coeur_url_v1* url) {
+void url_free(coeur_url_v1* url) {
 	if (url) {
 		if (url->fullUrl) free(url->fullUrl);
 		if (url->buffer) buffer_free(url->buffer);
 		
 		free(url);
+	}
+}
+
+void url_fetch_contents(coeur_url_v1* url) {
+	assert(url);
+	if (url->scheme == URL_SCHEME_HTTP) {
+		url->buffer = http_fetch_from_url(url);
+	} else {
+		setLastError("Unsupported url scheme");
+		url->buffer = NULL;
 	}
 }
 
